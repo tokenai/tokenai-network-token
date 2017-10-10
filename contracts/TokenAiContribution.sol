@@ -2,7 +2,7 @@ pragma solidity ^0.4.11;
 
 /*
     Copyright 2017, Ilana Fraines TokenAi
-    With heavy influence from District0xContribution.sol
+    With heavy influence from District0xContribution.sol and AragonDev
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,18 +30,18 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
 
     TokenAiNetworkToken public tokenAiNetworkToken;
     address public multisigWallet;                                      // Wallet that receives all sale funds
-    address public givethWallet;                                        // Giveth team Wallet that receives all presale donation funds
+    address public givethWallet;                                        // Giveth team Wallet that receives funds sent before sale start time
     address public founder1;                                            // Wallet of founder 1
     address public founder2;                                            // Wallet of founder 2
     address public founder3;                                            // Wallet of founder 3
     address public founder4;                                            // Wallet of founder 4
     address[] public advisers;                                          // x Wallets of advisors
 
-    uint public constant FOUNDER_STAKE = 10000 ether;                   //usd/eth
-    uint public constant FOUNDER3_STAKE = 9000 ether;                    //usd/eth
-    uint public constant FOUNDER4_STAKE = 3660 ether;                    //usd/eth
-    uint public constant COMMUNITY_ADVISERS_STAKE = 3940 ether;         //usd/eth
-    uint public constant CONTRIB_PERIOD1_STAKE = 145000 ether;          //usd/eth
+    uint public constant FOUNDER_STAKE = 10000;                         //usd/eth
+    uint public constant FOUNDER3_STAKE = 9000;                         //usd/eth
+    uint public constant FOUNDER4_STAKE = 3660;                         //usd/eth
+    uint public constant COMMUNITY_ADVISERS_STAKE = 3940;               //usd/eth
+    uint public constant CONTRIB_PERIOD1_STAKE = 145000;                //usd/eth
 
     uint public minContribAmount = 0.01 ether;                          // 0.01 ether
     uint public maxGasPrice = 50000000000;                              // 50 GWei

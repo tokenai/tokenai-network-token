@@ -33,49 +33,49 @@ contract MultiSigWallet {
 
     modifier onlyWallet() {
         if (msg.sender != address(this))
-            throw;
+            revert();
         _;
     }
 
     modifier ownerDoesNotExist(address owner) {
         if (isOwner[owner])
-            throw;
+            revert();
         _;
     }
 
     modifier ownerExists(address owner) {
         if (!isOwner[owner])
-            throw;
+            revert();
         _;
     }
 
     modifier transactionExists(uint transactionId) {
         if (transactions[transactionId].destination == 0)
-            throw;
+           revert();
         _;
     }
 
     modifier confirmed(uint transactionId, address owner) {
         if (!confirmations[transactionId][owner])
-            throw;
+            revert();
         _;
     }
 
     modifier notConfirmed(uint transactionId, address owner) {
         if (confirmations[transactionId][owner])
-            throw;
+            revert();
         _;
     }
 
     modifier notExecuted(uint transactionId) {
         if (transactions[transactionId].executed)
-            throw;
+            revert();
         _;
     }
 
     modifier notNull(address _address) {
         if (_address == 0)
-            throw;
+           revert();
         _;
     }
 
@@ -84,7 +84,7 @@ contract MultiSigWallet {
             || _required > ownerCount
             || _required == 0
             || ownerCount == 0)
-            throw;
+            revert();
         _;
     }
 
@@ -108,7 +108,7 @@ contract MultiSigWallet {
     {
         for (uint i=0; i<_owners.length; i++) {
             if (isOwner[_owners[i]] || _owners[i] == 0)
-                throw;
+                revert();
             isOwner[_owners[i]] = true;
         }
         owners = _owners;
@@ -224,13 +224,13 @@ contract MultiSigWallet {
         notExecuted(transactionId)
     {
         if (isConfirmed(transactionId)) {
-            Transaction tx = transactions[transactionId];
-            tx.executed = true;
-            if (tx.destination.call.value(tx.value)(tx.data))
+            Transaction storage tx1 = transactions[transactionId];
+            tx1.executed = true;
+            if (tx1.destination.call.value(tx1.value)(tx1.data))
                 Execution(transactionId);
             else {
                 ExecutionFailure(transactionId);
-                tx.executed = false;
+                tx1.executed = false;
             }
         }
     }

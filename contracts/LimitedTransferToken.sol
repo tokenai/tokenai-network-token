@@ -1,12 +1,12 @@
 pragma solidity ^0.4.11;
 
-import "./zeppelin/ERC20.sol";
+import "./ERC20.sol";
 
 /*
     Very slightly modified version of OpenZeppelin's LimitedTransferToken
     Original can be found at ./orig/LimitedTransferToken.sol or https://raw.githubusercontent.com/OpenZeppelin/zeppelin-solidity/master/contracts/token/LimitedTransferToken.sol
     Modifications:
-    - Added return types "bool" so it's compact with MiniMeToken
+    - Added return types "bool" so it's compatable with MiniMeToken
 */
 
 contract LimitedTransferToken is ERC20 {

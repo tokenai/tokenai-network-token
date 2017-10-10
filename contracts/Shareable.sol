@@ -41,7 +41,7 @@ contract Shareable {
   // simple single-sig function modifier.
   modifier onlyOwner {
     if (!isOwner(msg.sender)) {
-      throw;
+      revert();
     }
     _;
   }

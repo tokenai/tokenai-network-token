@@ -1,8 +1,7 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.14;
 
 import "./ERC20Basic.sol";
 import "./Ownable.sol";
-import "./TokenAiNetworkToken.sol";
 
 /**
  * @title Contracts that should not own Tokens
@@ -13,8 +12,6 @@ import "./TokenAiNetworkToken.sol";
  */
 contract HasNoTokens is Ownable {
 
-  TokenAiNetworkToken public tokenAiNetworkToken;
-
  /**
   * @dev Reject all ERC23 compatible tokens
   * @param from_ address The address that is transferring the tokens
@@ -22,7 +19,7 @@ contract HasNoTokens is Ownable {
   * @param data_ Bytes The data passed from the caller.
   */
   function tokenFallback(address from_, uint256 value_, bytes data_) external {
-    throw;
+    revert();
   }
 
   function isTokenSaleToken(address tokenAddr) returns(bool);

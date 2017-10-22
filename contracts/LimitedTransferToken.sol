@@ -1,6 +1,6 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.14;
 
-import "./ERC20.sol";
+import "./ERC20Basic.sol";
 
 /*
     Very slightly modified version of OpenZeppelin's LimitedTransferToken
@@ -12,7 +12,7 @@ import "./ERC20.sol";
 contract LimitedTransferToken is ERC20 {
   // Checks whether it can transfer or otherwise throws.
   modifier canTransfer(address _sender, uint _value) {
-   if (_value > transferableTokens(_sender, uint64(now))) throw;
+   require(_value < transferableTokens(_sender, uint64(now)));
    _;
   }
 

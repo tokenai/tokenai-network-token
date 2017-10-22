@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.14;
 
 /*
     Slightly modified OpenZeppelin Vested Token deriving MiniMeToken
@@ -13,14 +13,14 @@ pragma solidity ^0.4.11;
 
 import "./LimitedTransferToken.sol";
 import "./SafeMath.sol";
-import "./GrantsControlled.sol";
+import "./interface/Controlled.sol";
 
 /**
  * @title Vested token
  * @dev Tokens that can be vested for a group of addresses.
  */
 
-contract VestedToken is LimitedTransferToken, GrantsControlled {
+contract VestedToken is LimitedTransferToken, Controlled {
   using SafeMath for uint;
 
   uint256 MAX_GRANTS_PER_ADDRESS = 20;
@@ -55,7 +55,7 @@ contract VestedToken is LimitedTransferToken, GrantsControlled {
     uint64 _vesting,
     bool _revokable,
     bool _burnsOnRevoke
-  ) onlyGrantsController public {
+  ) onlyController public {
 
     // Check for date inconsistencies that may cause unexpected behavior
     if (_cliff < _start || _vesting < _cliff) {
@@ -89,13 +89,8 @@ contract VestedToken is LimitedTransferToken, GrantsControlled {
   function revokeTokenGrant(address _holder, uint _grantId) public {
     TokenGrant grant = grants[_holder][_grantId];
 
-    if (!grant.revokable) { // Check if grant was revokable
-      throw;
-    }
-
-    if (grant.granter != msg.sender) { // Only granter can revoke it
-      throw;
-    }
+    require(grant.revokable); // Check if grant was revokable
+    require(grant.granter == msg.sender); // Only granter can revoke it
 
     address receiver = grant.burnsOnRevoke ? 0xdead : msg.sender;
 

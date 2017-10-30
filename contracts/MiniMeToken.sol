@@ -113,7 +113,7 @@ contract MiniMeToken is ERC20, Controlled {
     /// @param _amount The amount of tokens to be transferred
     /// @return Whether the transfer was successful or not
     function transfer(address _to, uint256 _amount) returns (bool success) {
-        require(transfersEnabled) ;
+        require(transfersEnabled);
         return doTransfer(msg.sender, _to, _amount);
     }
 
@@ -373,10 +373,10 @@ contract MiniMeToken is ERC20, Controlled {
     function destroyTokens(address _owner, uint _amount
     ) onlyController returns (bool) {
         uint curTotalSupply = getValueAt(totalSupplyHistory, block.number);
-        require(curTotalSupply > _amount);
+        require(curTotalSupply >= _amount);
         updateValueAtNow(totalSupplyHistory, curTotalSupply.sub(_amount));
         var previousBalanceFrom = balanceOf(_owner);
-        require(previousBalanceFrom > _amount);
+        require(previousBalanceFrom >= _amount);
         updateValueAtNow(balances[_owner], previousBalanceFrom.sub(_amount));
         Transfer(_owner, 0, _amount);
         return true;

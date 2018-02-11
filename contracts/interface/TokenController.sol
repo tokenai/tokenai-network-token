@@ -1,4 +1,10 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.14;
+/*
+    Copyright 2017, Jorge Izquierdo (Aragon Foundation)
+    Copyright 2017, Jordi Baylina (Giveth)
+
+    Based on MiniMeToken.sol from https://github.com/Giveth/minime
+ */
 
 /// @dev The token controller contract must implement these functions
 contract TokenController {

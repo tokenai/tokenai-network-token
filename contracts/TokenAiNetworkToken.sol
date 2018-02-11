@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.14;
 
 import "./MiniMeToken.sol";
 import "./VestedToken.sol";
@@ -9,13 +9,12 @@ contract TokenAiNetworkToken is MiniMeToken, VestedToken {
             _tokenFactory,
             0x0,                        // no parent token
             0,                          // no snapshot block number from parent
-            "TokenAi Netwok Token", // Token name
+            "TokenAI Netwok Token",     // Token name
             18,                         // Decimals
             "TAI",                      // Symbol
             true                        // Enable transfers
             )
     {
         changeController(_controller);
-        changeGrantsController(_controller);
     }
 }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.14;
 
 /*
     Copyright 2017, Ilana Fraines TokenAi
@@ -35,16 +35,17 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
     address public founder2;                                            // Wallet of founder 2
     address public founder3;                                            // Wallet of founder 3
     address public founder4;                                            // Wallet of founder 4
-    address[] public advisers;                                          // x Wallets of advisors
+    address public founder5;                                            // Wallet of founder 5
 
-    uint public constant FOUNDER_STAKE = 10000;                         //usd/eth
-    uint public constant FOUNDER3_STAKE = 9000;                         //usd/eth
-    uint public constant FOUNDER4_STAKE = 3660;                         //usd/eth
-    uint public constant COMMUNITY_ADVISERS_STAKE = 3940;               //usd/eth
-    uint public constant CONTRIB_PERIOD1_STAKE = 145000;                //usd/eth
+    uint public constant FOUNDER1_STAKE =  11000000000000000000000;                       //wei
+    uint public constant FOUNDER2_STAKE =  11000000000000000000000;                       //wei
+    uint public constant FOUNDER3_STAKE = 9167000000000000000000;                         //wei
+    uint public constant FOUNDER4_STAKE = 3667000000000000000000;                         //wei
+    uint public constant FOUNDER5_STAKE = 3667000000000000000000;                         //wei
 
-    uint public minContribAmount = 0.01 ether;                          // 0.01 ether
-    uint public maxGasPrice = 50000000000;                              // 50 GWei
+    uint public constant RESERVE = 4400000000000000000000;                                //wei
+    uint public constant CONTRIB_PERIOD1_STAKE = 183334000000000000000000;                //wei
+    uint public minContribAmount = 0.01 ether;                                            // 0.01 ether
 
     uint public constant TEAM_VESTING_CLIFF = 24 weeks;                 // 6 months vesting cliff for founders and advisors, except community advisors
     uint public constant TEAM_VESTING_PERIOD = 96 weeks;                // 2 years vesting period for founders and advisors, except community advisors
@@ -57,7 +58,6 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
     uint public bonusPrice = 100;                                       // Number of TAI tokens for 1 eth, in the 24hr bonus sale
 
     uint public priceStages = 4;                                        // Number of different price stages for interpolating between initialPrice and finalPrice
-    uint public weiToEther = 1000000000000000000;                       // Number of wei in one ether
 
     struct Contributor {
         uint amount;                                                    // Amount of ETH contributed by an address in given contribution period
@@ -66,7 +66,7 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         uint amountCompensated;                                         // Amount of TAI received. Not really needed to store,
                                                                         // but stored for accounting and security purposes
     }
-
+    uint public initialSupply;                                          // Number of TAI tokens generated
     uint public softCapAmount;                                          // Soft cap of contribution period in wei
     uint public afterSoftCapDuration;                                   // Number of seconds to the end of sale from the moment of reaching soft cap (unless reaching hardcap)
     uint public hardCapAmount;                                          // When reached this amount of wei, the contribution will end instantly
@@ -75,28 +75,23 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
     bool public isEnabled;                                              // If contribution period was enabled by multisignature
     bool public softCapReached;                                         // If soft cap was reached
     bool public hardCapReached;                                         // If hard cap was reached
-    uint public totalContributed;                                       // Total amount of ETH contributed in given period
+    uint public totalContributed;                                       // Total amount of wei contributed in given period
     address[] public contributorsKeys;                                  // Addresses of all contributors in given contribution period
     mapping (address => Contributor) public contributors;
 
-    event onContribution(uint totalContributed, address indexed contributor, uint amount,
+    event onContribution(uint totalContributed1, address indexed contributor, uint amount,
         uint contributorsCount);
-    event onSoftCapReached(uint endTime);
-    event onHardCapReached(uint endTime);
+    event onSoftCapReached(uint endTime1);
+    event onHardCapReached(uint endTime1);
     event onCompensated(address indexed contributor, uint amount);
-    event onPresaleContribution(address indexed contributor, uint amount, uint price);
-
-    modifier onlyMultisig() {
-        require(multisigWallet == msg.sender);
-        _;
-    }
+    event onPreContributionEvent(address indexed contributor, uint amount, uint price);
 
     modifier nonZeroAddress(address x) {
         require (x != 0);
         _;
     }
 
-    modifier onlyBeforeSale {
+    modifier onlyBeforeEvent {
       require (now < startTime && !isEnabled );
       _;
     }
@@ -108,27 +103,25 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         address _founder2,
         address _founder3,
         address _founder4,
-        address[] _advisers
+        address _founder5
     ) {
-        //require(_advisers.length == 5);
         multisigWallet = _multisigWallet;
         givethWallet = _givethWallet;
         founder1 = _founder1;
         founder2 = _founder2;
         founder3 = _founder3;
         founder4 = _founder4;
-        advisers = _advisers;
+        founder5 = _founder5;
     }
 
     // @notice Returns true if contribution period is currently running
     function isContribPeriodRunning() constant returns (bool) {
-        return !hardCapReached &&
-               isEnabled &&
+        return isEnabled &&
                startTime <= now &&
                endTime > now;
     }
 
-    function contribute()
+     function contribute()
         payable
         stopInEmergency
     {
@@ -144,9 +137,8 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         payable
         stopInEmergency
     {
-        require(tx.gasprice <= maxGasPrice);
         require(msg.value >= minContribAmount);
-        if(isContribPeriodRunning()){
+        if ( isContribPeriodRunning() ) {
           uint contribValue = msg.value;
           uint excessContribValue = 0;
 
@@ -155,7 +147,7 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
           totalContributed = oldTotalContributed.add(contribValue);
 
           uint newTotalContributed = totalContributed;
-
+          uint price = getPrice(now);
           // Soft cap was reached
           if (newTotalContributed >= softCapAmount &&
               oldTotalContributed < softCapAmount)
@@ -175,30 +167,32 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
               // Everything above hard cap will be sent back to contributor
               excessContribValue = newTotalContributed.sub(hardCapAmount);
               contribValue = contribValue.sub(excessContribValue);
+              newTotalContributed = newTotalContributed.sub(excessContribValue);
 
               totalContributed = hardCapAmount;
           }
 
-          if (contributors[contributor].amount == 0) {
+          if (contributors[contributor].amountCompensated == 0) {
               contributorsKeys.push(contributor);
           }
-          contributors[contributor].price = getPrice(now);
-          contributors[contributor].amount = contributors[contributor].amount.add(contribValue);
+          contributors[contributor].amountCompensated = contributors[contributor].amountCompensated.add(SafeMath.mul(price,contribValue));
           //transfer contrution to multisigWallet
           multisigWallet.transfer(contribValue);
           if (excessContribValue > 0) {
               msg.sender.transfer(excessContribValue);
           }
-          onContribution(newTotalContributed, contributor, contribValue, contributorsKeys.length);
-        } else{
-          if (contributors[contributor].amount == 0) {
+          onContribution(newTotalContributed, contributor, (now), contributorsKeys.length);
+        } else if(now < startTime) {
+          uint contribValue1 = msg.value;
+          if (contributors[contributor].amountCompensated == 0) {
               contributorsKeys.push(contributor);
           }
-          contributors[contributor].price = 1;
-          contributors[contributor].amount = contributors[contributor].amount.add(contribValue);
-
+          //contributors[contributor].price = SafeMath.div(1,1000000000000000000);
+          //contributors[contributor].amount = contributors[contributor].amount.add(contribValue);
+          contributors[contributor].amountCompensated = contributors[contributor].amountCompensated.add(1);
           //transfer contrution to giveth wallet if user tries to contribut in advance of sale
-          givethWallet.transfer(contribValue);
+          givethWallet.transfer(contribValue1);
+          onContribution(newTotalContributed, contributor, contribValue1, contributorsKeys.length);
         }
     }
 
@@ -221,11 +215,6 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         while (i < contributorsCount && compensatedCount < limit) {
             address contributorAddress = contributorsKeys[i];
             if (!contributors[contributorAddress].isCompensated) {
-                uint amountEther = SafeMath.div(contributors[contributorAddress].amount,weiToEther);
-                uint contributionPrice = contributors[contributorAddress].price;
-                uint tokensGranted = SafeMath.mul(amountEther, contributionPrice); //  Calculate how many tokens bought
-                contributors[contributorAddress].amountCompensated = tokensGranted;
-
                 tokenAiNetworkToken.transfer(contributorAddress, contributors[contributorAddress].amountCompensated);
                 contributors[contributorAddress].isCompensated = true;
                 onCompensated(contributorAddress, contributors[contributorAddress].amountCompensated);
@@ -242,67 +231,81 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
     // @param contributor: The contributors address.
     // @param weiAmount: Amount of wei contributed.
     // @param taiPerEth: taiPerEth of TAI per eth.
-    function allocatePresaleTokens(address contributor, uint weiAmount, uint taiPerEth)
-             onlyBeforeSale
+    function allocatePresaleTokens(address contributor, uint weiAmount, uint price)
+             onlyBeforeEvent
              nonZeroAddress(contributor)
-             onlyMultisig
+             onlyOwner
              public {
+      require(!softCapReached);
+      uint contribValue = weiAmount;
+      uint excessContribValue = 0;
 
       uint oldTotalContributed = totalContributed;
 
-      totalContributed = oldTotalContributed.add(weiAmount);
+      totalContributed = oldTotalContributed.add(contribValue);
 
       uint newTotalContributed = totalContributed;
-
         // Soft cap was reached
-        if (newTotalContributed >= softCapAmount &&
+      if (newTotalContributed >= softCapAmount &&
                    oldTotalContributed < softCapAmount)
         {
             softCapReached = true;
-            endTime = afterSoftCapDuration.add(now);
-            onSoftCapReached(endTime);
+            onSoftCapReached(1);
+            // Everything above soft cap will not be accepted
+            excessContribValue = newTotalContributed.sub(softCapAmount);
+            contribValue = contribValue.sub(excessContribValue);
+            newTotalContributed = newTotalContributed.sub(excessContribValue);
+
+            totalContributed = softCapAmount;
+
         }
 
-        if (contributors[contributor].amount == 0) {
+        if (contributors[contributor].amountCompensated == 0) {
             contributorsKeys.push(contributor);
         }
-        contributors[contributor].price = taiPerEth;
-        contributors[contributor].amount = contributors[contributor].amount.add(weiAmount);
-        onPresaleContribution(contributor, weiAmount, taiPerEth);
+        //contributors[contributor].price = price;
+        //contributors[contributor].amount = contributors[contributor].amount.add(weiAmount);
+
+        contributors[contributor].amountCompensated = contributors[contributor].amountCompensated.add(SafeMath.mul(price,contribValue));
+
+        onPreContributionEvent(contributor, contribValue, price);
     }
 
     // @notice Gets what the price is for a given stage
     // @param stage: Stage number
     // @return price per eth for that stage.
-    // If sale stage doesn't exist, returns 0.
-    function priceForStage(uint8 stage) constant internal returns (uint256) {
-        if (stage >= priceStages) return 0;
+    function priceForStage(uint8 stage) constant internal returns (uint) {
+        require (stage < priceStages);
         uint priceDifference = SafeMath.sub(initialPrice, finalPrice);
         uint stageDelta = SafeMath.div(priceDifference, uint(priceStages - 1));
-        return SafeMath.sub(initialPrice, SafeMath.mul(uint256(stage), stageDelta));
+        return SafeMath.sub(initialPrice, SafeMath.mul(stage, stageDelta));
     }
     // @notice Gets what the stage is for a given date and time
     // @param datetime: UNIX time
     // @return The sale stage for that date time. Stage is between 0 and (priceStages - 1)
-    function stageForDate(uint dateTime) constant internal returns (uint8) {
+    function stageForDate(uint dateTime) constant internal returns (uint) {
         uint current = SafeMath.sub(dateTime, startTime);
         uint totalTime = SafeMath.sub(endTime, startTime);
 
-        return uint8(SafeMath.div(SafeMath.mul(priceStages, current), totalTime));
+        return SafeMath.div(SafeMath.mul(priceStages, current), totalTime);
     }
 
     // @notice Get the price for a TAI token at any given date
     // @param dateTime for which the price is requested
     // @return Number of eth-TAI for 1 eth
-    // If sale isn't ongoing for that time, returns 0. Last 24hrs bonus period price
-    function getPrice(uint dateTime) constant public returns (uint256) {
+    // If sale isn't ongoing for that time, returns 0.
+    //Last 1/30 the bonus period price
+    function getPrice(uint dateTime) constant public returns (uint) {
       if (dateTime < startTime || dateTime >= endTime) return 0;
-        if(dateTime > SafeMath.sub(endTime,86400)){
-          return bonusPrice;
-        } else{
-          return priceForStage(stageForDate(dateTime));
-        }
+      uint totalTime = SafeMath.sub(endTime, startTime);
+      uint last30th = SafeMath.div(totalTime,30);
+
+      if(dateTime > SafeMath.sub(endTime,last30th)){
+        return bonusPrice;
+      } else{
+          return priceForStage(uint8(stageForDate(dateTime)));
       }
+    }
 
     // @notice Method for setting up contribution period
     // Only owner should be able to execute
@@ -339,29 +342,27 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
        tokenAiNetworkToken.revokeAllTokenGrants(founder2);
        tokenAiNetworkToken.revokeAllTokenGrants(founder3);
        tokenAiNetworkToken.revokeAllTokenGrants(founder4);
+       tokenAiNetworkToken.revokeAllTokenGrants(founder5);
 
-        for (uint j = 0; j < advisers.length; j++) {
-            tokenAiNetworkToken.revokeAllTokenGrants(advisers[j]);
-        }
+        uint64 vestingDate = uint64(startTime.add(TEAM_VESTING_PERIOD));
+        uint64 cliffDate = uint64(startTime.add(TEAM_VESTING_CLIFF));
+        uint64 startDate = uint64(startTime);
 
-         uint64 vestingDate = uint64(startTime.add(TEAM_VESTING_PERIOD));
-         uint64 cliffDate = uint64(startTime.add(TEAM_VESTING_CLIFF));
-         uint64 startDate = uint64(startTime);
+        tokenAiNetworkToken.grantVestedTokens(founder1, SafeMath.mul(FOUNDER1_STAKE,initialPrice), startDate, cliffDate, vestingDate, true, false);
+        tokenAiNetworkToken.grantVestedTokens(founder2, SafeMath.mul(FOUNDER2_STAKE,initialPrice), startDate, cliffDate, vestingDate, true, false);
+        tokenAiNetworkToken.grantVestedTokens(founder3, SafeMath.mul(FOUNDER3_STAKE,initialPrice), startDate, cliffDate, vestingDate, true, false);
+        tokenAiNetworkToken.grantVestedTokens(founder4, SafeMath.mul(FOUNDER4_STAKE,initialPrice), startDate, cliffDate, vestingDate, true, false);
+        tokenAiNetworkToken.grantVestedTokens(founder5, SafeMath.mul(FOUNDER5_STAKE,initialPrice), startDate, cliffDate, vestingDate, true, false);
 
-        tokenAiNetworkToken.grantVestedTokens(founder1, FOUNDER_STAKE, startDate, cliffDate, vestingDate, true, false);
-        tokenAiNetworkToken.grantVestedTokens(founder2, FOUNDER_STAKE, startDate, cliffDate, vestingDate, true, false);
-        tokenAiNetworkToken.grantVestedTokens(founder3, FOUNDER3_STAKE, startDate, cliffDate, vestingDate, true, false);
-        tokenAiNetworkToken.grantVestedTokens(founder4, FOUNDER4_STAKE, startDate, cliffDate, vestingDate, true, false);
-
-        // Community advisors stake has no vesting, but we set it up this way, so we can revoke it in case of
-        // re-setting up contribution period
-        tokenAiNetworkToken.grantVestedTokens(advisers[4], COMMUNITY_ADVISERS_STAKE, startDate, startDate, startDate, true, false);
+        //transfer reserve tokens to multisig
+        uint reserveVal = SafeMath.mul(RESERVE,initialPrice);
+        tokenAiNetworkToken.transfer(multisigWallet,reserveVal);
     }
 
     // @notice Enables contribution period
-    // Must be executed by multisignature
+    // Must be executed by owner
     function enableContribPeriod()
-        onlyMultisig
+        onlyOwner
     {
         require(startTime > now);
         isEnabled = true;
@@ -379,18 +380,6 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         minContribAmount = _minContribAmount;
     }
 
-    // @notice Sets new max gas price for contribution
-    // Only owner can execute
-    // Cannot be executed while contribution period is running
-    // @param _minContribAmount new min. amount
-    function setMaxGasPrice(uint _maxGasPrice)
-        onlyOwner
-    {
-        require(_maxGasPrice > 0);
-        require(startTime > now);
-        maxGasPrice = _maxGasPrice;
-    }
-
     // @notice Sets TokenAiNetworkToken contract
     // Generates all TAI tokens and assigns them to this contract
     // If token contract has already generated tokens, do not generate again
@@ -402,18 +391,21 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         require(!isEnabled);
         tokenAiNetworkToken = TokenAiNetworkToken(_tokenAiNetworkToken);
         if (tokenAiNetworkToken.totalSupply() == 0) {
-            tokenAiNetworkToken.generateTokens(this, FOUNDER_STAKE
-              .add(FOUNDER_STAKE)
-              .add(FOUNDER3_STAKE)
-              .add(FOUNDER4_STAKE)
-              .add(COMMUNITY_ADVISERS_STAKE)
-              .add(CONTRIB_PERIOD1_STAKE));
+          initialSupply = FOUNDER1_STAKE
+          .add(FOUNDER2_STAKE)
+          .add(FOUNDER3_STAKE)
+          .add(FOUNDER4_STAKE)
+          .add(FOUNDER5_STAKE)
+          .add(RESERVE)
+          .add(CONTRIB_PERIOD1_STAKE);
+
+          tokenAiNetworkToken.generateTokens(this,
+              SafeMath.mul(initialSupply,initialPrice));
 
         }
     }
 
-    // @notice Enables transfers of TAI
-    // Will be executed after first contribution period by owner
+    // Will be executed after contribution period by owner
     function enableTokenAiTransfers()
         onlyOwner
     {
@@ -421,18 +413,22 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         tokenTransfersEnabled = true;
     }
 
+    //Burn outstanding tokens owned by contract
+    function finalizeContributionEvent()
+     onlyOwner
+     {
+        require(endTime < now);
+        tokenAiNetworkToken.destroyTokens(this,tokenAiNetworkToken.balanceOf(this));
+        tokenAiNetworkToken.changeController(multisigWallet);
+
+    }
     // @notice Method to claim tokens accidentally sent to a TAI contract
     // Only multisig wallet can execute
     // @param _token Address of claimed ERC20 Token
     function claimTokensFromTokenAiNetworkToken(address _token)
-        onlyMultisig
+        onlyOwner
     {
         tokenAiNetworkToken.claimTokens(_token, multisigWallet);
-    }
-
-    // @notice Kill method should not really be needed, but just in case
-    function kill(address _to) onlyMultisig external {
-        suicide(_to);
     }
 
     function()
@@ -487,17 +483,13 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
     }
 
     // Used by contribution front-end to obtain contribution contract properties
-    function getConfiguration()
-        constant
-        returns (bool, address, address, address, address, address, address[] _advisers, bool, uint)
-    {
-        _advisers = new address[](advisers.length);
-        for (uint i = 0; i < advisers.length; i++) {
-            _advisers[i] = advisers[i];
-        }
-        return (stopped, multisigWallet, founder1, founder2, founder3, founder4, _advisers, tokenTransfersEnabled,
-            maxGasPrice);
-    }
+      function getConfiguration()
+          constant
+          returns (bool, address, address, address, address, address, address, bool)
+      {
+
+          return (stopped, multisigWallet, founder1, founder2, founder3, founder4, founder5, tokenTransfersEnabled);
+      }
 
     // Used by contribution front-end to obtain contributor's properties
     function getContributor(address contributorAddress)
@@ -537,10 +529,4 @@ contract TokenAiContribution is Pausable, HasNoTokens, TokenController {
         }
         return contributorIndexes;
     }
-
-    function getNow() constant returns(uint)
-    {
-        return now;
-    }
-
 }

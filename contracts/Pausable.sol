@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.14;
 
 
 import "./Ownable.sol";
@@ -15,16 +15,12 @@ contract Pausable is Ownable {
   event onEmergencyChanged(bool isStopped);
 
   modifier stopInEmergency {
-    if (stopped) {
-      throw;
-    }
+    require(!stopped);
     _;
   }
 
   modifier onlyInEmergency {
-    if (!stopped) {
-      throw;
-    }
+    require(stopped);
     _;
   }
 

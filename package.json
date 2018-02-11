@@ -1,0 +1,25 @@
+{
+  "name": "truffle-async-await-tests",
+  "version": "1.0.0",
+  "description": "Examples of using async await with Truffle tests",
+  "keywords": [
+    "truffle",
+    "testrpc",
+    "ethereum",
+    "web3",
+    "solidity"
+  ],
+  "scripts": {
+    "test": "truffle test"
+  },
+  "author": {
+    "name": "Angello Pozo",
+    "email": "angellopozo@gmail.com",
+    "url": "https://github.com/sogoiii"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "ethereumjs-abi": "^0.6.5",
+    "solc": "^0.4.19"
+  }
+}

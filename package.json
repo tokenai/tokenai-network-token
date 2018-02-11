@@ -1,7 +1,7 @@
 {
-  "name": "truffle-async-await-tests",
+  "name": "tokenai-tests",
   "version": "1.0.0",
-  "description": "Examples of using async await with Truffle tests",
+  "description": "Contract tests for tokenai",
   "keywords": [
     "truffle",
     "testrpc",
@@ -13,9 +13,9 @@
     "test": "truffle test"
   },
   "author": {
-    "name": "Angello Pozo",
-    "email": "angellopozo@gmail.com",
-    "url": "https://github.com/sogoiii"
+    "name": "Ilana Fraines",
+    "email": "ilana@tokenai.io",
+    "url": "https://github.com/tokenai"
   },
   "license": "MIT",
   "dependencies": {

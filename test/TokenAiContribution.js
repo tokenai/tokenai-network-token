@@ -277,7 +277,7 @@ contract('TokenAIContributionContract', function(accounts) {
 
      let totalSupplyAfter = await token.totalSupply();
      let totalSupplyAfterVal = 33935250000000000000000000 - 27494340000000000000000000;
-     assert.equal(parseInt(totalSupplyAfter),parseInt(totalSupplyAfterVal));
+     assert.equal((totalSupplyAfter).toNumber(),totalSupplyAfterVal);
    });
 
    it("should not accept funds after endTime", async function() {
